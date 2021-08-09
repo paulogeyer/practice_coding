@@ -1,0 +1,11 @@
+(define (pascal-term r c)
+  (if (or (= r 1)
+	  (< c 2)
+	  (> c r)
+	  (= c r))
+      1
+      (+ (pascal-term (- r 1)
+		      (- c 1))
+	 (pascal-term (- r 1)
+		      c))))
+      

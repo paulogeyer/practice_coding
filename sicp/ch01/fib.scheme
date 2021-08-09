@@ -1,0 +1,23 @@
+(define (fib n)
+  (cond ((= n 0) 0)
+	((= n 1) 1)
+	(else (+ (fib (- n 1))
+		 (fib (- n 2))))))
+
+(define (fib n)
+  (fib-iter 1 0 n))
+
+(define (fib-iter a b count)
+  (if (= count 0)
+      b
+      (fib-iter (+ a b) a (- count 1))))
+
+(define phi (/ (+ 1 (sqrt 5)) 2))
+
+(define epsilon (/ (- 1 (sqrt 5)) 2))
+
+(define (fib-formula n)
+  (/ (expt phi n) (sqrt 5)))
+
+(define (fib-formula2 n)
+   (/ (- (expt phi n) (expt epsilon n)) (sqrt 5)))

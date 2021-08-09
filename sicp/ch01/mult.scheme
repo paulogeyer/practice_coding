@@ -1,0 +1,25 @@
+(define (* a b)
+  (if (= b 0)
+      0
+      (+ a (* a (- b 1)))))
+
+(define (double n)
+  (+ n n))
+
+(define (halve n)
+  (/ n 2))
+
+(define (* a b)
+  (if (= b 1)
+      a
+      (* (double a) (halve b))))
+
+(define (* a b)
+  (if (even? b)
+      (*-fast a b)
+      (+ a (* a (- b 1)))))
+
+(define (*-fast a b)
+  (if (= b 1)
+      a
+      (*-fast (double a) (halve b))))
