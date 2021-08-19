@@ -10,7 +10,8 @@
   (= (remainder b a) 0))
 
 (define (prime? n)
-  (= n (smallest-divisor n)))
+  (and (not (= n 1))
+       (= n (smallest-divisor n))))
 
 (define (expmod base exp m)
   (cond ((= exp 0) 1)
