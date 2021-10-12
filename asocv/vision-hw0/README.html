@@ -1,0 +1,151 @@
+<h1>CSE 455 Homework 0</h1>
+<p>Welcome friends,</p>
+<p>For the first assignment we'll just get to know the codebase a little bit and practice manipulating images, transforming things, breaking stuff, it should be fun!</p>
+<h2>Image basics</h2>
+<p>We have a pretty basic datastructure to store images in our library. The <code>image</code> struct stores the image metadata like width, height, and number of channels. It also contains the image data stored as a floating point array. You can check it out in <code>src/image.h</code>, it looks like this:</p>
+<pre><code>typedef struct{
+    int h,w,c;
+    float *data;
+} image;
+</code></pre>
+<p>We have also provided some functions for loading and saving images. Use the function:</p>
+<pre><code>image im = load_image("image.jpg");
+</code></pre>
+<p>to load a new image. To save an image use:</p>
+<pre><code>save_image(im, "output");
+</code></pre>
+<p>which will save the image as <code>output.jpg</code>. If you want to make a new image with dimensions Width x Height x Channels you can call:</p>
+<pre><code>image im = make_image(w,h,c);
+</code></pre>
+<p>You should also use: </p>
+<pre><code>free_image(im);
+</code></pre>
+<p>when you are done with an image. So it goes away. You can check out how all this is implemented in <code>src/load_image.c</code>. You probably shouldn't change anything in this file. We use the <code>stb_image</code> libary for the actual loading and saving of jpgs because that is, like, REALLY complicated. I think. I've never tried. Anywho....</p>
+<p>You'll be modifying the file <code>src/process_image.c</code>. We've also included a python compatability library. <code>uwimg.py</code> includes the code to access your C library from python. <code>tryit.py</code> has some example code you can run. We will build the library using <code>make</code>. Simply run the command:</p>
+<pre><code>make
+</code></pre>
+<p>after you make any changes to the code. Then you can quickly test your changes by running:</p>
+<pre><code>./uwimg test
+</code></pre>
+<p>You can also try running the example python code to generate some images:</p>
+<pre><code>python tryit.py
+</code></pre>
+<h2>1. Getting and setting pixels</h2>
+<p>The most basic operation we want to do is change the pixels in an image. As we talked about in class, we represent an image as a 3 dimensional tensor. We have spatial information as well as multiple channels which combine together to form a color image:</p>
+<p><img alt="RGB format" src="figs/rgb.png" /></p>
+<p>The convention is that the coordinate system starts at the top left of the image, like so:</p>
+<p><img alt="Image coordinate system" src="figs/coords.png" /></p>
+<p>In our <code>data</code> array we store the image in <code>CHW</code> format. The first pixel in data is at channel 0, row 0, column 0. The next pixel is channel 0, row 0, column 1, then channel 0, row 0, column 2, etc.</p>
+<p>Your first task is to fill out these two functions in <code>src/process_image.c</code>:</p>
+<pre><code>float get_pixel(image im, int x, int y, int c);
+void set_pixel(image im, int x, int y, int c, float v);
+</code></pre>
+<p><code>get_pixel</code> should return the pixel value at column <code>x</code>, row <code>y</code>, and channel <code>c</code>. <code>set_pixel</code> should set the pixel to the value <code>v</code>. You will need to do bounds checking to make sure the coordinates are valid for the image. <code>set_pixel</code> should simply return without doing anything if you pass in invalid coordinates. For <code>get_pixel</code> we will perform padding to the image. There are a number of possible padding strategies:</p>
+<p><img alt="Image padding strategies" src="figs/pad.png" /></p>
+<p>We will use the <code>clamp</code> padding strategy. This means that if the programmer asks for a pixel at column -3, use column 0, or if they ask for column 300 and the image is only 256x256 you will use column 255 (because of zero-based indexing).</p>
+<p>We can test out our pixel-setting code on the dog image by removing all of the red channel. See line 3-8 in <code>tryit.py</code>:</p>
+<pre><code># 1. Getting and setting pixels
+im = load_image("data/dog.jpg")
+for row in range(im.h):
+    for col in range(im.w):
+        set_pixel(im, row, col, 0, 0)
+save_image(im, "figs/dog_no_red")
+</code></pre>
+<p>Then try running it. Check out our very not red dog:</p>
+<p><img alt="" src="figs/dog_no_red.jpg" /></p>
+<h2>2. Copying images</h2>
+<p>Sometimes you have an image and you want to copy it! To do this we should make a new image of the same size and then fill in the data array in the new image. You could do this by getting and setting pixels, by looping over the whole array and just copying the floats (pop quiz: if the image is 256x256x3, how many total pixels are there?), or by using the built-in memory copying function <code>memcpy</code>.</p>
+<p>Fill in the function <code>image copy_image(image im)</code> in <code>src/process_image.c</code> with your code.</p>
+<h2>3. Grayscale image</h2>
+<p>Now let's start messing with some images! People like making images grayscale. It makes them look... old? Or something? Let's do it.</p>
+<p>Remember how humans don't see all colors equally? Here's the chart to remind you:</p>
+<p><img alt="Eye sensitivity to different wavelengths" src="figs/sensitivity.png" /></p>
+<p>This actually makes a huge difference in practice. Here's a colorbar we may want to convert:</p>
+<p><img alt="Color bar" src="figs/colorbar.png" /></p>
+<p>If we convert it using an equally weighted mean K = (R+G+B)/3 we get a conversion that doesn't match our perceptions of the given colors:</p>
+<p><img alt="Averaging grayscale" src="figs/avggray.jpg" /></p>
+<p>Instead we are going to use a weighted sum. Now, there are a few ways to do this. If we wanted the most accurate conversion it would take a fair amount of work. sRGB uses <a href="https://en.wikipedia.org/wiki/SRGB#The_sRGB_transfer_function_(&quot;gamma&quot;)">gamma compression</a> so we would first want to convert the color to linear RGB and then calculate <a href="https://en.wikipedia.org/wiki/Relative_luminance">relative luminance</a>.</p>
+<p>But we don't care about being toooo accurate so we'll just do the quick and easy version instead. Video engineers use a calculation called <a href="https://en.wikipedia.org/wiki/Luma_(video)">luma</a> to find an approximation of perceptual intensity when encoding video signal, we'll use that to convert our image to grayscale. It operates directly on the gamma compressed sRGB values that we already have! We simply perform a weighted sum:</p>
+<pre><code>Y' = 0.299 R' + 0.587 G' + .114 B'
+</code></pre>
+<p>Using this conversion technique we get a pretty good grayscale image! Now we can run <code>tryit.py</code> to output <code>graybar.jpg</code>. See lines 10-13:</p>
+<pre><code># 3. Grayscale image
+im = load_image("data/colorbar.png")
+graybar = rgb_to_grayscale(im)
+save_image(graybar, "graybar")
+</code></pre>
+<p><img alt="Grayscale colorbars" src="figs/gray.png" /></p>
+<p>Implement this conversion for the function <code>rgb_to_grayscale</code>. Return a new image that is the same size but only one channel containing the calculated luma values.</p>
+<h2>4. Shifting the image colors</h2>
+<p>Now let's write a function to add a constant factor to a channel in an image. We can use this across every channel in the image to make the image brighter or darker. We could also use it to, say, shift an image to be more or less of a given color.</p>
+<p>Fill in the code for <code>void shift_image(image im, int c, float v);</code>. It should add <code>v</code> to every pixel in channel <code>c</code> in the image. Now we can try shifting all the channels in an image by <code>.4</code> or 40%. See lines 15-20 in <code>tryit.py</code>:</p>
+<pre><code># 4. Shift Image
+im = load_image("data/dog.jpg")
+shift_image(im, 0, .4)
+shift_image(im, 1, .4)
+shift_image(im, 2, .4)
+save_image(im, "overflow")
+</code></pre>
+<p>But wait, when we look at the resulting image <code>overflow.jpg</code> we see something bad has happened! The light areas of the image went past 1 and when we saved the image back to disk it overflowed and made weird patterns:</p>
+<p><img alt="Overflow" src="figs/overflow.jpg" /></p>
+<h2>5. Clamping the image values</h2>
+<p>Our image pixel values have to be bounded. Generally images are stored as byte arrays where each red, green, or blue value is an unsigned byte between 0 and 255. 0 represents none of that color light and 255 represents that primary color light turned up as much as possible.</p>
+<p>We represent our images using floating point values between 0 and 1. However, we still have to convert between our floating point representation and the byte arrays that are stored on disk. In the example above, our pixel values got above 1 so when we converted them back to byte arrays and saved them to disk they overflowed the byte data type and went back to very small values. That's why the very bright areas of the image looped around and became dark.</p>
+<p>We want to make sure the pixel values in the image stay between 0 and 1. Implement clamping on the image so that any value below zero gets set to zero and any value above 1 gets set to one. Fill in <code>void clamp_image(image im);</code> to modify the image in-place. Then when we clamp the shifted image and save it we see much better results, see lines 22-24 in <code>tryit.py</code>:</p>
+<pre><code># 5. Clamp Image
+clamp_image(im)
+save_image(im, "fixed")
+</code></pre>
+<p>and the resulting image, <code>fixed.jpg</code>:</p>
+<p><img alt="" src="figs/fixed.jpg" /></p>
+<h2>6. RGB to Hue, Saturation, Value</h2>
+<p>So far we've been focussing on RGB and grayscale images. But there are other colorspaces out there too we may want to play around with. Like <a href="https://en.wikipedia.org/wiki/HSL_and_HSV">Hue, Saturation, and Value (HSV)</a>. We will be translating the cubical colorspace of sRGB to the cylinder of hue, saturation, and value:</p>
+<p><img alt="RGB HSV conversion" src="figs/convert.png" /></p>
+<p><a href="https://en.wikipedia.org/wiki/Hue">Hue</a> can be thought of as the base color of a pixel. <a href="https://en.wikipedia.org/wiki/Colorfulness#Saturation">Saturation</a> is the intensity of the color compared to white (the least saturated color). The <a href="https://en.wikipedia.org/wiki/Lightness">Value</a> is the perception of brightness of a pixel compared to black. You can try out this <a href="http://math.hws.edu/graphicsbook/demos/c2/rgb-hsv.html">demo</a> to get a better feel for the differences between these two colorspaces. For a geometric interpretation of what this transformation:</p>
+<p><img alt="RGB to HSV geometry" src="figs/rgbtohsv.png" /></p>
+<p>Now, to be sure, there are <a href="http://poynton.ca/notes/colour_and_gamma/ColorFAQ.html#RTFToC36">lots of issues</a> with this colorspace. But it's still fun to play around with and relatively easy to implement. The easiest component to calculate is the Value, it's just the largest of the 3 RGB components:</p>
+<pre><code>V = max(R,G,B)
+</code></pre>
+<p>Next we can calculate Saturation. This is a measure of how much color is in the pixel compared to neutral white/gray. Neutral colors have the same amount of each three color components, so to calculate saturation we see how far the color is from being even across each component. First we find the minimum value</p>
+<pre><code>m = min(R,G,B)
+</code></pre>
+<p>Then we see how far apart the min and max are:</p>
+<pre><code>C = V - m
+</code></pre>
+<p>and the Saturation will be the ratio between the difference and how large the max is:</p>
+<pre><code>S = C / V
+</code></pre>
+<p>Except if R, G, and B are all 0. Because then V would be 0 and we don't want to divide by that, so just set the saturation 0 if that's the case.</p>
+<p>Finally, to calculate Hue we want to calculate how far around the color hexagon our target color is.</p>
+<p><img alt="color hex" src="figs/hex.png" /></p>
+<p>We start counting at Red. Each step to a point on the hexagon counts as 1 unit distance. The distance between points is given by the relative ratios of the secondary colors. We can use the following formula from <a href="https://en.wikipedia.org/wiki/HSL_and_HSV#Hue_and_chroma">Wikipedia</a>:</p>
+<p><img src="figs/eq.svg" width="256"></p>
+<p>There is no "correct" Hue if C = 0 because all of the channels are equal so the color is a shade of gray, right in the center of the cylinder. However, for now let's just set H = 0 if C = 0 because then your implementation will match mine.</p>
+<p>Notice that we are going to have H = [0,1) and it should circle around if it gets too large or goes negative. Thus we check to see if it is negative and add one if it is. This is slightly different than other methods where H is between 0 and 6 or 0 and 360. We will store the H, S, and V components in the same image, so simply replace the R channel with H, the G channel with S, etc.</p>
+<h2>7. HSV to RGB</h2>
+<p>Ok, now do it all backwards in <code>hsv_to_rgb</code>!</p>
+<p>Finally, when your done we can mess with some images! In <code>tryit.py</code> we convert an image to HSV, increase the saturation, then convert it back, lines 26-32:</p>
+<pre><code># 6-7. Colorspace and saturation
+im = load_image("data/dog.jpg")
+rgb_to_hsv(im)
+shift_image(im, 1, .2)
+clamp_image(im)
+hsv_to_rgb(im)
+save_image(im, "dog_saturated")
+</code></pre>
+<p><img alt="Saturated dog picture" src="figs/dog_saturated.jpg" /></p>
+<p>Hey that's exciting! Play around with it a little bit, see what you can make. Note that with the above method we do get some artifacts because we are trying to increase the saturation in areas that have very little color. Instead of shifting the saturation, you could scale the saturation by some value to get smoother results!</p>
+<h2>8. A small amount of extra credit</h2>
+<p>Implement <code>void scale_image(image im, int c, float v);</code> to scale a channel by a certain amount. This will give us better saturation results. Note, you will have to add the necessary lines to the header and python library, it should be very similar to what's already there for <code>shift_image</code>. Now if we scale saturation by <code>2</code> instead of just shifting it all up we get much better results:</p>
+<pre><code>im = load_image("data/dog.jpg")
+rgb_to_hsv(im)
+scale_image(im, 1, 2)
+clamp_image(im)
+hsv_to_rgb(im)
+save_image(im, "dog_scale_saturated")
+</code></pre>
+<p><img alt="Dog saturated smoother" src="figs/dog_scale_saturated.jpg" /></p>
+<h2>9. Super duper extra credit</h2>
+<p>Implement RGB to <a href="https://en.wikipedia.org/wiki/CIELUV#Cylindrical_representation_.28CIELCH.29">Hue, Chroma, Lightness</a>, a perceptually more accurate version of Hue, Saturation, Value. Note, this will involve gamma decompression, converting to CIEXYZ, converting to CIELUV, converting to HCL, and the reverse transformations. The upside is a similar colorspace to HSV but with better perceptual properties!</p>
+<h2>Turn it in</h2>
+<p>You only need to turn in one file, your <code>process_image.c</code>. Use the dropbox link on the class website.</p>

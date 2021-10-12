@@ -1,2 +1,6 @@
 # ignore emacs files
 *~
+
+# ignore video files
+*.mp4
+*.mkv
