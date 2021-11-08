@@ -33,3 +33,16 @@
 	      ;; (format t "j: ~A~%" j))
 	 (rotatef (aref lst i) (aref lst cur-min-index)))
     lst))
+
+;; ex 2.1-2, pg 22
+
+(defun reverse-insertion-sort (lst1)
+  (let ((lst (copy-seq lst1)))
+    (loop for j from 1 upto (1- (length lst)) do              ;; c1, n
+	 (setq key (aref lst j))                              ;; c2, n-1
+	 (setq i (1- j))                                      ;; c4, n-1
+	 (loop while (and (>= i 0) (< (aref lst i) key)) do   ;; c5, sum t[j] from j=2 upto n
+	      (setf (aref lst (1+ i)) (aref lst i))           ;; c6, sum (t[j] - 1) from j=2 upto n
+	      (decf i))                                       ;; c7, sum (t[j] - 1) from j=2 upto n
+	 (setf (aref lst (1+ i)) key))                        ;; c8, n-1
+    lst))
