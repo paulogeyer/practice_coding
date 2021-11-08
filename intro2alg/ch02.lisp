@@ -46,3 +46,17 @@
 	      (decf i))                                       ;; c7, sum (t[j] - 1) from j=2 upto n
 	 (setf (aref lst (1+ i)) key))                        ;; c8, n-1
     lst))
+
+;; ex 2.1-3
+
+;; the loop invariant is lst[0..i], where are the searched objects, lst[i..-1] contain the space to be searched
+(defun linear-search (lst1 item)
+  (let ((lst (copy-seq lst1))
+	(found nil))
+    (loop for i from 0 upto (1- (length lst))
+       do
+	 (if (= (aref lst i) item)
+	     (progn
+	       (setq found i)
+	       (return))))
+    found))
