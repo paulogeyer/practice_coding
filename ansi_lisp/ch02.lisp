@@ -42,3 +42,43 @@
 	  t
 	  (has-null (cdr lst)))))
 
+;; ex 8, define recursive and iterative functions
+(defun print-dots (n)
+  (if (= n 0)
+      (format t "~%")
+      (progn
+	(format t ".")
+	(print-dots (- n 1)))))
+
+(defun print-dots (n)
+  (do ((i 1 (+ i 1)))
+      ((> i n) 'done)
+    (format t "."))
+  (format t "~%"))
+
+(defun count-obj (lst obj)
+  (if (null lst)
+      0
+      (+ (count-obj (cdr lst) obj)
+	 (if (eq (car lst) obj)
+	     1
+	     0))))
+
+(defun count-obj (lst obj)
+  (let ((i 0))
+    (dolist (el lst)
+      (if (eq el obj)
+	  (incf i)))
+    i))
+
+;; ex 9, fix functions
+(defun summit (lst)
+  (apply #'+ (remove nil lst)))
+
+(defun summit (lst)
+  (let ((x (car lst)))
+    (if (null lst)
+	0
+	(if (null x)
+	    (summit (cdr lst))
+	    (+ x (summit (cdr lst)))))))
